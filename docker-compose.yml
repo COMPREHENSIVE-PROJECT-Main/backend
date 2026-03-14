@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  main-backend:
+    container_name: main-backend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - main-db
+    restart: always
+    cap_drop:
+      - ALL
+    environment:
+      - DB_HOST=main-db
+      - DB_PORT=5432
+      - DB_USER=${MAIN_DB_USER}
+      - DB_PASSWORD=${MAIN_DB_PASSWORD}
+      - DB_NAME=${MAIN_DB_NAME}
+
+  main-db:
+    container_name: main-db
+    image: postgres:16.2-alpine
+    volumes:
+      - main-db-data:/var/lib/postgresql/data
+    restart: always
+    environment:
+      - POSTGRES_USER=${MAIN_DB_USER}
+      - POSTGRES_PASSWORD=${MAIN_DB_PASSWORD}
+      - POSTGRES_DB=${MAIN_DB_NAME}
+
+volumes:
+  main-db-data:
