@@ -10,6 +10,9 @@ services:
       - "8080:8080"
     depends_on:
       - main-db
+      - redis
+      - chromadb
+      - ollama
     restart: always
     cap_drop:
       - ALL
@@ -19,6 +22,10 @@ services:
       - DB_USER=${MAIN_DB_USER}
       - DB_PASSWORD=${MAIN_DB_PASSWORD}
       - DB_NAME=${MAIN_DB_NAME}
+      - REDIS_URL=redis://redis:6379
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - OLLAMA_BASE_URL=http://ollama:11434
 
   main-db:
     container_name: main-db
@@ -31,5 +38,56 @@ services:
       - POSTGRES_PASSWORD=${MAIN_DB_PASSWORD}
       - POSTGRES_DB=${MAIN_DB_NAME}
 
+  redis:
+    container_name: redis
+    image: redis:7.2-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+
+  chromadb:
+    container_name: chromadb
+    image: chromadb/chroma:latest
+    restart: always
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma-data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+
+  ollama:
+    container_name: ollama
+    image: ollama/ollama:latest
+    restart: always
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+
+  ollama-init:
+    container_name: ollama-init
+    image: ollama/ollama:latest
+    depends_on:
+      - ollama
+    volumes:
+      - ollama-data:/root/.ollama
+    entrypoint: >
+      /bin/sh -c "
+        sleep 10 &&
+        ollama pull gemma3:4b &&
+        ollama pull nomic-embed-text
+      "
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    restart: on-failure
+
 volumes:
   main-db-data:
+  redis-data:
+  chroma-data:
+  ollama-data:
