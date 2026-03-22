@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from sqlalchemy import text
 
 import app.models
+from app.api.router import router
 from app.database import engine, create_tables
 
 
@@ -18,6 +19,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.include_router(router)  # 전체 라우터 등록
 
 
 @app.get("/")
