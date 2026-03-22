@@ -2,7 +2,9 @@
 from fastapi import APIRouter
 
 from app.api.endpoints import auth
+from app.api.endpoints import cases
 
 router = APIRouter(prefix="/api")
 
 router.include_router(auth.router)
+router.include_router(cases.router)

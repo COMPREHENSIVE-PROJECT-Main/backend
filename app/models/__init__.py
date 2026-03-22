@@ -3,4 +3,4 @@
 from app.models.case import Case
 from app.models.user import User
 
-__all__ = ["Case", "User"]
+__all__ = ["Case", "User", "UserCase"]
