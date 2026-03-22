@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     ollama_llm_model: str = "gemma3:4b"
     ollama_embed_model: str = "nomic-embed-text"
 
+    # JWT 설정
+    jwt_secret_key: str
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30   # 액세스 토큰 유효기간 (분)
+    refresh_token_expire_days: int = 7      # 리프레시 토큰 유효기간 (일)
+
     @property
     def database_url(self) -> str:
         # SQLAlchemy가 DB에 연결할 때 쓰는 주소 문자열 조합

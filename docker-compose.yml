@@ -30,6 +30,8 @@ services:
       - OLLAMA_BASE_URL=http://ollama:11434
       - OLLAMA_LLM_MODEL=${OLLAMA_LLM_MODEL:-gemma3:4b}
       - OLLAMA_EMBED_MODEL=${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
 
   main-db:
     container_name: main-db
