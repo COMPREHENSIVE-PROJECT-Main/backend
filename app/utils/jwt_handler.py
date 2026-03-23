@@ -23,12 +23,13 @@ def create_access_token(user_id: int, username: str) -> str:
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
 
-def create_refresh_token(user_id: int) -> str:
+def create_refresh_token(user_id: int, username: str) -> str:
     # 만료 시각 계산 (현재 시각 + 7일)
     expire = datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
 
     payload = {
         "sub": str(user_id),
+        "username": username,
         "exp": expire,
         "type": "refresh",
     }

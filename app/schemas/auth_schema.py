@@ -31,3 +31,14 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+
+
+# 리프레시 토큰 재발급 요청 데이터
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+# 액세스 토큰 재발급 성공 시 반환 데이터
+class AccessTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
