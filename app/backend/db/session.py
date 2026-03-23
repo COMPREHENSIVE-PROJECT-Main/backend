@@ -1,3 +1,4 @@
+# 삭제해도 된다면 삭제가능
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
