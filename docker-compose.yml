@@ -3,7 +3,7 @@ services:
     container_name: main-backend
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: app/backend/Dockerfile
     ports:
       - "8080:8080"
     depends_on:
@@ -11,8 +11,8 @@ services:
         condition: service_healthy  # DB가 실제로 쿼리 받을 준비가 됐을 때만 시작
       redis:
         condition: service_started
-      chromadb:
-        condition: service_started
+      # chromadb:
+      #   condition: service_started
       ollama:
         condition: service_started
     restart: always
@@ -25,13 +25,35 @@ services:
       - DB_PASSWORD=${MAIN_DB_PASSWORD}
       - DB_NAME=${MAIN_DB_NAME}
       - REDIS_URL=redis://redis:6379
-      - CHROMA_HOST=chromadb
-      - CHROMA_PORT=8000
+      # - CHROMA_HOST=chromadb
+      # - CHROMA_PORT=8000
       - OLLAMA_BASE_URL=http://ollama:11434
       - OLLAMA_LLM_MODEL=${OLLAMA_LLM_MODEL:-gemma3:4b}
       - OLLAMA_EMBED_MODEL=${OLLAMA_EMBED_MODEL:-nomic-embed-text}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+
+  ai-service:
+    container_name: ai-service
+    build:
+      context: .
+      dockerfile: app/ai/Dockerfile
+    ports:
+      - "8090:8090"
+    depends_on:
+      redis:
+        condition: service_started
+      ollama:
+        condition: service_started
+    restart: always
+    cap_drop:
+      - ALL
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_LLM_MODEL=${OLLAMA_LLM_MODEL:-gemma3:4b}
+      - OLLAMA_EMBED_MODEL=${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+      - LLM_MODE=test
 
   main-db:
     container_name: main-db
@@ -59,17 +81,17 @@ services:
       - redis-data:/data
     command: redis-server --appendonly yes
 
-  chromadb:
-    container_name: chromadb
-    image: chromadb/chroma:latest
-    restart: always
-    ports:
-      - "8001:8000"
-    volumes:
-      - chroma-data:/chroma/chroma
-    environment:
-      - IS_PERSISTENT=TRUE
-      - ANONYMIZED_TELEMETRY=FALSE
+  # chromadb:
+  #   container_name: chromadb
+  #   image: chromadb/chroma:latest
+  #   restart: always
+  #   ports:
+  #     - "8001:8000"
+  #   volumes:
+  #     - chroma-data:/chroma/chroma
+  #   environment:
+  #     - IS_PERSISTENT=TRUE
+  #     - ANONYMIZED_TELEMETRY=FALSE
 
   ollama:
     container_name: ollama
@@ -100,5 +122,5 @@ services:
 volumes:
   main-db-data:
   redis-data:
-  chroma-data:
+  # chroma-data:
   ollama-data:
