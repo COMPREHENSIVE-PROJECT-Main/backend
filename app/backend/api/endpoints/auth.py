@@ -4,9 +4,9 @@ from sqlalchemy.orm import Session
 
 from app.backend.utils.dependencies import get_current_user, get_db
 from app.backend.models.user import User
-from app.backend.schemas.auth_schema import LoginRequest, RegisterRequest, TokenResponse, UserResponse
+from app.backend.schemas.auth_schema import AccessTokenResponse, LoginRequest, RefreshRequest, RegisterRequest, TokenResponse, UserResponse
 from app.backend.services.auth_service import create_user, get_user_by_username, verify_password
-from app.backend.utils.jwt_handler import create_access_token, create_refresh_token
+from app.backend.utils.jwt_handler import create_access_token, create_refresh_token, decode_token
 from app.com.logger import get_logger
 
 logger = get_logger("auth")
@@ -44,7 +44,7 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
 
     # 토큰 생성
     access_token = create_access_token(user.id, user.username)
-    refresh_token = create_refresh_token(user.id)
+    refresh_token = create_refresh_token(user.id, user.username)
 
     # Refresh 토큰 DB 저장
     user.refresh_token = refresh_token
@@ -67,3 +67,37 @@ def logout(
     logger.info(f"로그아웃 완료 - username: {current_user.username}")
 
     return {"message": "로그아웃 완료"}
+
+
+@router.post("/refresh", response_model=AccessTokenResponse)
+def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
+    invalid_error = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="유효하지 않은 리프레시 토큰입니다",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        payload = decode_token(body.refresh_token)
+    except Exception:
+        raise invalid_error
+
+    # 리프레시 토큰인지 확인
+    if payload.get("type") != "refresh":
+        raise invalid_error
+
+    # username으로 유저 조회
+    username = payload.get("username")
+    user = get_user_by_username(db, username)
+    if user is None:
+        raise invalid_error
+
+    # DB에 저장된 토큰과 일치하는지 확인
+    if user.refresh_token != body.refresh_token:
+        raise invalid_error
+
+    access_token = create_access_token(user.id, user.username)
+
+    logger.info(f"액세스 토큰 재발급 완료 - username: {user.username}")
+
+    return AccessTokenResponse(access_token=access_token)
