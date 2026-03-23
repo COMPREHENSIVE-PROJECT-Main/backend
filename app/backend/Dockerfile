@@ -9,7 +9,7 @@ RUN useradd -m -s /bin/bash appuser
 
 WORKDIR /app
 
-COPY requirements.txt ./
+COPY app/backend/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/__init__.py ./app/__init__.py

@@ -1,6 +1,7 @@
 # case 입력 검증
 from fastapi import HTTPException
-from app.utils.logger import get_logger
+
+from app.com.logger import get_logger
 
 logger = get_logger("case_input_validator")
 
