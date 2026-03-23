@@ -5,9 +5,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from sqlalchemy import text
 
-import app.models
-from app.api.router import router
-from app.database import engine, create_tables
+import app.backend.models
+from app.backend.api.router import router
+from app.backend.db.database import engine, create_tables
 
 
 @asynccontextmanager

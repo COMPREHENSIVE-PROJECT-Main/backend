@@ -1,5 +1,5 @@
-from app.db.vector_db import get_collection
-from app.utils.logger import get_logger
+from app.ai.db.vector_db import get_collection
+from app.com.logger import get_logger
 
 logger = get_logger(__name__)
 

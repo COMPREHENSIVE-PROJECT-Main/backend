@@ -1,8 +1,8 @@
 import hashlib
 import json
 
-from app.db.redis import get_cache, set_cache
-from app.utils.logger import get_logger
+from app.ai.db.redis import get_cache, set_cache
+from app.com.logger import get_logger
 
 logger = get_logger(__name__)
 

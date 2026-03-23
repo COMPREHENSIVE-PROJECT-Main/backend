@@ -2,12 +2,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_user, get_db
-from app.models.user import User
-from app.schemas.auth_schema import LoginRequest, RegisterRequest, TokenResponse, UserResponse
-from app.services.auth_service import create_user, get_user_by_username, verify_password
-from app.utils.jwt_handler import create_access_token, create_refresh_token
-from app.utils.logger import get_logger
+from app.backend.utils.dependencies import get_current_user, get_db
+from app.backend.models.user import User
+from app.backend.schemas.auth_schema import LoginRequest, RegisterRequest, TokenResponse, UserResponse
+from app.backend.services.auth_service import create_user, get_user_by_username, verify_password
+from app.backend.utils.jwt_handler import create_access_token, create_refresh_token
+from app.com.logger import get_logger
 
 logger = get_logger("auth")
 

@@ -2,7 +2,6 @@
 # 서버가 시작될 때 필요한 설정값들이 제대로 있는지 자동으로 확인해줌
 from pydantic_settings import BaseSettings
 
-
 class Settings(BaseSettings):
     # 데이터베이스 연결 정보
     db_host: str
@@ -12,14 +11,14 @@ class Settings(BaseSettings):
     db_name: str
 
     # 레디스 연결 정보 (임시 데이터 저장용)
-    redis_url: str
+    redis_url: str = "redis://redis:6379"
 
     # 크로마DB 연결 정보 (판례 벡터 저장용)
-    chroma_host: str
+    chroma_host: str = "chromadb"
     chroma_port: int = 8000
 
     # 올라마 연결 정보 (로컬 AI 모델 실행용)
-    ollama_base_url: str
+    ollama_base_url: str = "http://ollama:11434"
     ollama_llm_model: str = "gemma3:4b"
     ollama_embed_model: str = "nomic-embed-text"
 

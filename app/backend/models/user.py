@@ -1,7 +1,7 @@
 # 유저 정보를 저장하는 users 테이블
 from sqlalchemy import Column, Integer, String, Text, TIMESTAMP, func
 
-from app.database import Base
+from app.backend.db.database import Base
 
 
 class User(Base):

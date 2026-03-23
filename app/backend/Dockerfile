@@ -9,10 +9,13 @@ RUN useradd -m -s /bin/bash appuser
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY app/__init__.py ./app/__init__.py
+COPY app/backend ./app/backend
+COPY app/com ./app/com
+COPY app/config.py ./app/config.py
 
 RUN chown -R appuser:appuser /app
 
@@ -20,4 +23,4 @@ USER appuser
 
 EXPOSE 8080
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "app.backend.main:app", "--host", "0.0.0.0", "--port", "8080"]

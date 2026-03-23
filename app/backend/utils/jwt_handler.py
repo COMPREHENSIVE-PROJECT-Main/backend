@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 
 from app.config import settings
-from app.utils.logger import get_logger
+from app.com.logger import get_logger
 
 logger = get_logger("jwt_handler")
 

@@ -1,6 +1,6 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-from app.utils.logger import get_logger
+from app.com.logger import get_logger
 
 logger = get_logger(__name__)
 

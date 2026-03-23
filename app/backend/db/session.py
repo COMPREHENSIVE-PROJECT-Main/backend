@@ -1,8 +1,8 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.core.config import settings
-from app.utils.logger import get_logger
+from app.com.logger import get_logger
+from app.config import settings
 
 logger = get_logger(__name__)
 

@@ -2,8 +2,8 @@
 import bcrypt
 from sqlalchemy.orm import Session
 
-from app.models.user import User
-from app.utils.logger import get_logger
+from app.backend.models.user import User
+from app.com.logger import get_logger
 
 logger = get_logger("auth_service")
 

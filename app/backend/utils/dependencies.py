@@ -6,11 +6,11 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 from sqlalchemy.orm import Session
 
-from app.database import SessionLocal
-from app.models.user import User
-from app.services.auth_service import get_user_by_username
-from app.utils.jwt_handler import decode_token
-from app.utils.logger import get_logger
+from app.backend.models.user import User
+from app.backend.services.auth_service import get_user_by_username
+from app.backend.db.database import SessionLocal
+from app.backend.utils.jwt_handler import decode_token
+from app.com.logger import get_logger
 
 logger = get_logger("dependencies")
 
