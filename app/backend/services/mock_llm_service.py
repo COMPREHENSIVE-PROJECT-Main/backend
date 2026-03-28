@@ -1,4 +1,4 @@
-# 사건 설명 분석 후 추가 질문 생성 (임시 mock — 추후 llm_service로 교체)
+# 사건 분석 관련 mock 함수 모음 (임시 mock — 추후 llm_service로 교체)
 
 
 async def ask_followup_questions(case_description: str) -> list[str]:
@@ -17,3 +17,26 @@ async def ask_followup_questions(case_description: str) -> list[str]:
         "가해자와 피해자의 관계는 무엇인가요?",
         "사건 발생 장소 및 시간을 구체적으로 알려주세요."
     ]
+
+
+async def analyze_case(case_description: str, additional_info: str) -> dict:
+    """
+    사건 설명과 추가 정보를 분석하여 구조화된 결과 반환
+
+    예시 데이터 사용 — 추후 LLM 연동하여 동적 반환 필요
+
+    Returns:
+        AnalysisResult 형식의 dict
+    """
+
+    # [예시 데이터] 추후 LLM 연동하여 반환 필요
+    return {
+        "case_type": "형사",
+        "main_action": "음주운전",
+        "victim_exist": True,
+        "injury_level": "경미한 부상",
+        "evidence": [
+            {"type": "CCTV", "description": "사고 현장 CCTV 영상"},
+            {"type": "혈중알코올 검사", "description": "혈중알코올농도 0.15% 검사 결과"}
+        ]
+    }

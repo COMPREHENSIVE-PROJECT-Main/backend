@@ -3,6 +3,8 @@ from datetime import date
 
 from pydantic import BaseModel, Field
 
+from app.backend.schemas.analysis_schema import Evidence
+
 
 # 사건 입력 요청 데이터
 class CaseInput(BaseModel):
@@ -35,7 +37,12 @@ class CaseInputPlus(BaseModel):
     additional_info: str = ""  # 추가 정보 없으면 빈 문자열
 
 
-# 추가 정보 입력 성공 시 반환 데이터
+# 추가 정보 입력 성공 시 반환 데이터 (분석 결과 포함)
 class CaseInputPlusResponse(BaseModel):
     case_id: str
+    case_type: str
+    main_action: str
+    victim_exist: bool
+    injury_level: str
+    evidence: list[Evidence]
     message: str = "추가 정보가 저장되었습니다."

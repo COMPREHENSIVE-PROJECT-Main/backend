@@ -3,11 +3,13 @@ import json
 from datetime import date
 from pathlib import Path
 
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.backend.models.user_case import UserCase
+from app.backend.schemas.analysis_schema import AnalysisResult
 from app.backend.schemas.user_case_schema import CaseData, CaseInputPlusResponse, CaseResponse
-from app.backend.services.mock_llm_service import ask_followup_questions
+from app.backend.services.mock_llm_service import analyze_case, ask_followup_questions
 
 
 # 사건 입력 파일 저장 경로
@@ -69,17 +71,31 @@ async def save_case(description: str, user_id: int, db: Session) -> CaseResponse
     return CaseResponse(case_id=case_id, user_id=user_id, questions=questions)
 
 
-def save_case_plus(case_id: str, additional_info: str) -> CaseInputPlusResponse:
+async def save_case_plus(case_id: str, additional_info: str, user_id: int, db: Session) -> CaseInputPlusResponse:
     """
     추가 정보를 기존 사건 JSON 파일에 병합 저장
 
     Args:
         case_id: 기존 사건 ID
         additional_info: 사용자가 입력한 추가 정보 (빈 문자열 허용)
+        user_id: JWT에서 추출한 현재 유저 ID (소유권 검증용)
+        db: DB 세션
 
     Returns:
         CaseInputPlusResponse 객체
     """
+
+    # 소유권 검증 — 해당 case_id가 요청 유저의 것인지 확인
+    user_case = db.query(UserCase).filter(
+        UserCase.case_id == case_id,
+        UserCase.user_id == user_id
+    ).first()
+
+    if not user_case:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="해당 사건에 대한 권한이 없습니다"
+        )
 
     file_path = INPUT_CASES_DIR / f"{case_id}.json"
 
@@ -88,7 +104,15 @@ def save_case_plus(case_id: str, additional_info: str) -> CaseInputPlusResponse:
 
     case_data["additional_info"] = additional_info
 
+    # LLM 분석 호출 (mock — 교체 포인트: llm_factory 기반으로 변경)
+    analysis_dict = await analyze_case(
+        case_description=case_data.get("description", ""),
+        additional_info=additional_info
+    )
+    analysis = AnalysisResult(**analysis_dict)
+    case_data["analysis"] = analysis.model_dump()
+
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(case_data, f, ensure_ascii=False, indent=2)
 
-    return CaseInputPlusResponse(case_id=case_id)
+    return CaseInputPlusResponse(case_id=case_id, **analysis.model_dump())
