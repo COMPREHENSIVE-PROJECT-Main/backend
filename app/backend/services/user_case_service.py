@@ -6,7 +6,8 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from app.backend.models.user_case import UserCase
-from app.backend.schemas.user_case_schema import CaseData, CaseResponse
+from app.backend.schemas.user_case_schema import CaseData, CaseInputPlusResponse, CaseResponse
+from app.backend.services.mock_llm_service import ask_followup_questions
 
 
 # 사건 입력 파일 저장 경로
@@ -31,7 +32,7 @@ def _generate_case_id() -> str:
     return f"case_{next_num:04d}"
 
 
-def save_case(description: str, user_id: int, db: Session) -> CaseResponse:
+async def save_case(description: str, user_id: int, db: Session) -> CaseResponse:
     """
     사건 설명을 JSON 파일로 저장하고 DB에 유저-사건 연결 정보 기록
 
@@ -62,4 +63,32 @@ def save_case(description: str, user_id: int, db: Session) -> CaseResponse:
     db.add(user_case)
     db.commit()
 
-    return CaseResponse(case_id=case_id, user_id=user_id)
+    # 추가 질문 생성 (mock — 추후 LLM 연동)
+    questions = await ask_followup_questions(description)
+
+    return CaseResponse(case_id=case_id, user_id=user_id, questions=questions)
+
+
+def save_case_plus(case_id: str, additional_info: str) -> CaseInputPlusResponse:
+    """
+    추가 정보를 기존 사건 JSON 파일에 병합 저장
+
+    Args:
+        case_id: 기존 사건 ID
+        additional_info: 사용자가 입력한 추가 정보 (빈 문자열 허용)
+
+    Returns:
+        CaseInputPlusResponse 객체
+    """
+
+    file_path = INPUT_CASES_DIR / f"{case_id}.json"
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        case_data = json.load(f)
+
+    case_data["additional_info"] = additional_info
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(case_data, f, ensure_ascii=False, indent=2)
+
+    return CaseInputPlusResponse(case_id=case_id)

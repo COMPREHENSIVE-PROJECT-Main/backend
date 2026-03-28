@@ -21,8 +21,21 @@ class CaseData(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# 사건 입력 성공 시 반환 데이터
+# 사건 입력 성공 시 반환 데이터 (추가 질문 목록 포함)
 class CaseResponse(BaseModel):
     case_id: str
     user_id: int
+    questions: list[str]  # LLM이 요청한 추가 질문 목록 (없으면 빈 리스트)
     message: str = "사건이 접수되었습니다."
+
+
+# 추가 정보 입력 요청 데이터
+class CaseInputPlus(BaseModel):
+    case_id: str
+    additional_info: str = ""  # 추가 정보 없으면 빈 문자열
+
+
+# 추가 정보 입력 성공 시 반환 데이터
+class CaseInputPlusResponse(BaseModel):
+    case_id: str
+    message: str = "추가 정보가 저장되었습니다."
