@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from sqlalchemy import text
-
+from fastapi.middleware.cors import CORSMiddleware
 import app.backend.models
 from app.backend.api.router import router
 from app.backend.db.database import engine, create_tables
@@ -20,7 +20,17 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(router)  # 전체 라우터 등록
-
+app.add_middleware(
+    CORSMiddleware,
+    # 프론트엔드 도메인
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+    ],
+    allow_credentials=True,   # 쿠키, 인증 헤더 허용
+    allow_methods=["*"],      # 모든 HTTP 메서드(GET, POST 등) 허용
+    allow_headers=["*"],      # 모든 헤더 허용
+)
 
 @app.get("/")
 async def root():
