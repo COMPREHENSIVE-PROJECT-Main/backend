@@ -36,8 +36,8 @@ async def analyze_case(case_description: str, additional_info: str) -> dict:
         AnalysisResult 형식의 dict
     """
 
-    # 사건 설명 텍스트를 벡터로 변환 후 형사/민사 분류
-    vector = _vectorizer.transform([case_description])
+    # 사건 설명(최초 입력 + 추가 입력) 텍스트를 벡터로 변환 후 형사/민사 분류
+    vector = _vectorizer.transform([case_description + " " + additional_info])
     case_type = _model.predict(vector)[0]
 
     # [예시 데이터] 추후 LLM 연동하여 반환 필요
