@@ -1,5 +1,12 @@
 # 사건 분석 관련 mock 함수 모음 (임시 mock — 추후 llm_service로 교체)
 
+import joblib
+from pathlib import Path
+
+# 서버 시작 시 ML 모델 1회 로드
+_ML_DIR = Path("app/ai/ml")
+_model = joblib.load(_ML_DIR / "model.pkl")
+_vectorizer = joblib.load(_ML_DIR / "vectorizer.pkl")
 
 async def ask_followup_questions(case_description: str) -> list[str]:
     """
@@ -29,9 +36,13 @@ async def analyze_case(case_description: str, additional_info: str) -> dict:
         AnalysisResult 형식의 dict
     """
 
+    # 사건 설명 텍스트를 벡터로 변환 후 형사/민사 분류
+    vector = _vectorizer.transform([case_description])
+    case_type = _model.predict(vector)[0]
+
     # [예시 데이터] 추후 LLM 연동하여 반환 필요
     return {
-        "case_type": "형사",
+        "case_type": case_type,
         "main_action": "음주운전",
         "victim_exist": True,
         "injury_level": "경미한 부상",

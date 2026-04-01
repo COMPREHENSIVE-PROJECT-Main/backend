@@ -16,6 +16,7 @@ COPY app/__init__.py ./app/__init__.py
 COPY app/backend ./app/backend
 COPY app/com ./app/com
 COPY app/config.py ./app/config.py
+COPY app/ai/ml ./app/ai/ml          
 
 RUN chown -R appuser:appuser /app
 
