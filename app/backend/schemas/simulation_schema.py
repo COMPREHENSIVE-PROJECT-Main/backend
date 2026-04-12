@@ -1,7 +1,7 @@
 # 공방 시뮬레이션 API 입출력 규격 및 SSE 이벤트 데이터 구조
 
 from typing import Literal
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # 요청 스키마
@@ -9,6 +9,7 @@ from pydantic import BaseModel
 # 시뮬레이션 시작 요청
 class SimulationStartRequest(BaseModel):
     case_id: str
+    start_from_round: int = Field(default=1, ge=1, description="재개할 라운드 번호 (기본 1 = 처음부터)")
 
 
 # SSE 이벤트 데이터 스키마
@@ -68,3 +69,4 @@ class SimulationEndData(BaseModel):
 class SimulationErrorData(BaseModel):
     code: str
     message: str
+    failed_at_round: int = 0    # 에러 발생 시점 라운드 번호 (프론트 재시도 시 start_from_round로 사용)

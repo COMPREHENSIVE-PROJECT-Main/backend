@@ -1,10 +1,12 @@
 # 공방 시뮬레이션 오케스트레이터
-# 현재: mock 데이터로 SSE 스트리밍
-# AI파트 완료 후: ai_bridge.py 호출로 교체 예정
+# 현재: mock 데이터로 SSE 스트리밍 + DB 저장
+# AI파트 완료 후: _get_mock_simulation_data()를 ai_bridge.py 호출로 교체 예정
 
 import asyncio
 import json
 from typing import AsyncGenerator
+
+from sqlalchemy.orm import Session
 
 from app.backend.schemas.simulation_schema import (
     FinalVerdictData,
@@ -16,11 +18,18 @@ from app.backend.schemas.simulation_schema import (
     SimulationStartData,
     TokenData,
 )
+from app.backend.services.simulation_service import (
+    append_judge,
+    append_round,
+    create_simulation,
+    mark_failed,
+    save_final_verdict,
+)
 from app.com.logger import get_logger
 
 logger = get_logger("simulation")
 
-# 토큰 스트리밍 딜레이 (초) — 타이핑 효과 속도 조절
+# 토큰 스트리밍 딜레이 (초)
 _TOKEN_DELAY = 0.05
 
 
@@ -38,9 +47,8 @@ async def _stream_tokens(text: str) -> AsyncGenerator[str, None]:
         await asyncio.sleep(_TOKEN_DELAY)
 
 
-# mock 데이터 
-# [임시] AI파트 ai_bridge.py 연동 완료 시 아래 mock 데이터 및
-# _get_mock_simulation_data() 함수 전체를 교체한다.
+### mock 데이터 ###
+# AI파트 ai_bridge.py 연동 완료 시 _get_mock_simulation_data() 전체를 교체한다.
 
 def _get_mock_simulation_data(case_id: str) -> dict:
     """
@@ -118,17 +126,35 @@ def _get_mock_simulation_data(case_id: str) -> dict:
     }
 
 
-# 스트리밍 제너레이터
+### 스트리밍 제너레이터 ###
 
-async def run_simulation(case_id: str) -> AsyncGenerator[str, None]:
+async def run_simulation(
+    case_id: str,
+    user_id: int,
+    db: Session,
+    start_from_round: int = 1,
+) -> AsyncGenerator[str, None]:
     """
     공방 시뮬레이션 SSE 스트리밍 제너레이터
 
     현재는 mock 데이터를 사용하며,
     AI파트 완료 후 _get_mock_simulation_data()를 ai_bridge.py 호출로 교체한다.
+
+    Args:
+        case_id: 시뮬레이션할 사건 ID
+        user_id: 요청 유저 ID (DB 저장용)
+        db: DB 세션
+        start_from_round: 재개할 라운드 번호 (기본 1 = 처음부터)
     """
+    current_round = 0
+    simulation_id = None
+
     try:
-        logger.info(f"시뮬레이션 시작: case_id={case_id}")
+        logger.info(f"시뮬레이션 시작: case_id={case_id}, start_from_round={start_from_round}")
+
+        # DB에 시뮬레이션 레코드 생성
+        simulation = create_simulation(db=db, case_id=case_id, user_id=user_id)
+        simulation_id = simulation.id
 
         # [임시 mock] AI파트 연동 시 아래 한 줄을 ai_bridge 호출로 교체
         data = _get_mock_simulation_data(case_id)
@@ -142,14 +168,18 @@ async def run_simulation(case_id: str) -> AsyncGenerator[str, None]:
 
         await asyncio.sleep(0.3)
 
-        # ### 공방 라운드 ###############
+        # 공방 라운드
         for round_data in data["rounds"]:
             round_no = round_data["round"]
+            current_round = round_no
+
+            # 이미 완료된 라운드는 건너뜀 (재개 시)
+            if round_no < start_from_round:
+                continue
 
             for role, role_key in [("검사", "prosecution"), ("변호인", "defense")]:
                 agent_data = round_data[role_key]
 
-                # 라운드 시작
                 yield _sse_format("round_start", RoundStartData(
                     round=round_no,
                     speaker=role,
@@ -158,50 +188,64 @@ async def run_simulation(case_id: str) -> AsyncGenerator[str, None]:
 
                 await asyncio.sleep(0.2)
 
-                # 주장 텍스트 토큰 스트리밍
                 async for token_event in _stream_tokens(agent_data["argument"]):
                     yield token_event
 
                 await asyncio.sleep(0.3)
 
-                # 라운드 종료
-                yield _sse_format("round_end", RoundEndData(
+                round_end_data = RoundEndData(
                     round=round_no,
                     speaker=role,
                     argument=agent_data["argument"],
                     evidence_refs=agent_data["evidence_refs"]
-                ).model_dump())
+                )
+
+                yield _sse_format("round_end", round_end_data.model_dump())
+
+                # 라운드 결과 DB 저장
+                append_round(db=db, simulation_id=simulation_id, round_data=round_end_data.model_dump())
 
                 await asyncio.sleep(0.5)
 
         # 판사 판결
         for judge in data["judges"]:
-            yield _sse_format("judge_decision", JudgeDecisionData(
+            judge_data = JudgeDecisionData(
                 judge_type=judge["judge_type"],
                 decision=judge["decision"],
                 value=judge["value"],
                 rationale=judge["rationale"]
-            ).model_dump())
+            )
+
+            yield _sse_format("judge_decision", judge_data.model_dump())
+
+            # 판사 판결 DB 저장
+            append_judge(db=db, simulation_id=simulation_id, judge_data=judge_data.model_dump())
 
             await asyncio.sleep(0.8)
 
-        # #### 최종 판결 ################
-        yield _sse_format("final_verdict", FinalVerdictData(
-            **data["final_verdict"]
-        ).model_dump())
+        # 최종 판결
+        verdict_data = FinalVerdictData(**data["final_verdict"])
+        yield _sse_format("final_verdict", verdict_data.model_dump())
+
+        # 최종 판결 DB 저장 + 완료 처리
+        save_final_verdict(db=db, simulation_id=simulation_id, verdict_data=verdict_data.model_dump())
 
         await asyncio.sleep(0.3)
 
-        # 시뮬 종료
         yield _sse_format("simulation_end", SimulationEndData(
             case_id=case_id
         ).model_dump())
 
-        logger.info(f"시뮬레이션 완료: case_id={case_id}")
+        logger.info(f"시뮬레이션 완료: case_id={case_id}, simulation_id={simulation_id}")
 
     except Exception as e:
-        logger.error(f"시뮬레이션 오류: case_id={case_id}, error={e}")
+        logger.error(f"시뮬레이션 오류: case_id={case_id}, round={current_round}, error={e}")
+
+        if simulation_id:
+            mark_failed(db=db, simulation_id=simulation_id)
+
         yield _sse_format("error", SimulationErrorData(
             code="SIMULATION_ERROR",
-            message="시뮬레이션 중 오류가 발생했습니다."
+            message="시뮬레이션 중 오류가 발생했습니다.",
+            failed_at_round=current_round
         ).model_dump())
