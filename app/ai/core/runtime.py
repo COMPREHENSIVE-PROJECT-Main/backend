@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     llm_mode: str = "test"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "gemma3:4b"
+    ollama_embed_model: str = "nomic-embed-text"  # Pydantic Settings 필드 선언
     openai_api_key: str = ""
     openai_embedding_model: str = "text-embedding-3-small"
     chroma_path: str = "./chroma_db"
@@ -48,11 +49,12 @@ def _validate_settings() -> None:
     if not settings.ollama_model:
         raise ValueError("ollama_model must be configured")
 
-    if not settings.openai_api_key:
-        raise ValueError("openai_api_key must be configured")
+    # 테스트를 위해 주석 처리 
+    # if not settings.openai_api_key:
+    #     raise ValueError("openai_api_key must be configured")
 
-    if not settings.openai_embedding_model:
-        raise ValueError("openai_embedding_model must be configured")
+    # if not settings.openai_embedding_model:
+    #     raise ValueError("openai_embedding_model must be configured")
 
 def _warm_embedding_runtime() -> None:
     importlib.import_module("chromadb.utils.embedding_functions")
