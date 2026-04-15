@@ -20,9 +20,9 @@ class RetrievalCollection(str, Enum):
 
 class AgentRole(str, Enum):
     PROSECUTOR = "prosecutor"
-    DEFENSE = "defense"
     PLAINTIFF = "plaintiff"
-    DEFENDANT = "defendant"
+    CRIMINAL_DEFENSE = "criminal_defense"  # 형사 사건 피고 변호사
+    CIVIL_DEFENSE = "civil_defense"        # 민사 사건 피고 변호사
     JUDGE = "judge"
     MASTER_JUDGE = "master_judge"
     SYSTEM = "system"
@@ -94,6 +94,7 @@ class TrialState(BaseModel):
     debate_summary: dict | None = None                                   # 변론 종합 결과(공격측 발언, 방어측 발언, 인용 출처)
     final_verdict: str | None = None
     final_reasoning: str | None = None
+    final_sentence: str | None = None                                    # 마스터 판사 최종 형량 또는 배상액
     final_report: str | None = None                                      # 마스터 판사 종합 분석 리포트
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -117,7 +118,8 @@ class TrialState(BaseModel):
     def add_judge_opinion(self, opinion: JudgeOpinion) -> None:
         self.judge_opinions.append(opinion)
 
-    def set_final_decision(self, verdict: str, reasoning: str, report: str) -> None:
+    def set_final_decision(self, verdict: str, reasoning: str, report: str, sentence: str = "") -> None:
         self.final_verdict = verdict
         self.final_reasoning = reasoning
-        self.final_report = report                                      # 종합 분석 리포트 함께 저장
+        self.final_sentence = sentence
+        self.final_report = report

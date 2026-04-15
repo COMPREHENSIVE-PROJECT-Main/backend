@@ -7,16 +7,16 @@ from app.com.logger import get_logger
 
 logger = get_logger("retrieval_service")
 
-def search_chromadb( 
+def search_chromadb(
     case_summary : str, # 사건 설명
-    role_prompt : str,  # 역할 프롬프트 (공격/방어 측 입장 반영)
-    top_k : int = 5,    # 컬렉션별 최대 검색 결과 수 
+    role_query : str,   # 역할별 검색 쿼리 (공격/방어 측 입장 반영)
+    top_k : int = 5,    # 컬렉션별 최대 검색 결과 수
 ) -> list[RetrievedDocument] :
-    
+
     results = []
 
-    # 검색 쿼리 생성 (사건 설명 + 역할 프롬프트)
-    query = f"{case_summary}\n{role_prompt}"
+    # 검색 쿼리 생성 (사건 설명 + 역할별 검색 쿼리)
+    query = f"{case_summary}\n{role_query}"
 
     # 컬렉션별 순차 검색 (cases, statutes, sentencing)
     for collection_name in RetrievalCollection :
