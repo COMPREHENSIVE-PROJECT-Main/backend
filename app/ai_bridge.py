@@ -21,21 +21,13 @@ def _load_case_json(case_id: str) -> dict :
         return json.load(f)
 
 
-def _classify_case_type(description: str) -> str:
-    # ML 분류기로 사건 유형 판별 (형사/민사)
-    from app.ai.ml.classifier import classify
-
-    result = classify(description)
-    logger.info(f"사건 유형 분류 결과: {result}")
-    return result
-
 
 def _map_judge_name(judge_name: str) -> str:
     # judge_name → judge_type 변환
     mapping = {
-        "원칙주의": "원칙판사",
-        "형평주의": "형평판사",
-        "여론반영": "여론판사",
+        "원칙주의 판사": "원칙판사",
+        "형평주의 판사": "형평판사",
+        "여론반영 판사": "여론판사",
     }
     return mapping.get(judge_name, judge_name)
 
@@ -84,10 +76,10 @@ def _map_to_schema(simulation_result: dict, case_type: str) -> dict:
 
     # 최종 판결 변환 (FinalVerdictData)
     final_verdict = {
-        "decision": simulation_result.get("최종_판결", ""),       # "유죄" | "무죄" | "인용" | "기각"
-        "value": "",                                               # TODO: 마스터 판사 프롬프트 완성 후 채워짐
-        "order": "",                                               # TODO: 마스터 판사 프롬프트 완성 후 채워짐
-        "rationale": simulation_result.get("판결_근거", ""),       # 판결 이유
+        "decision": simulation_result.get("최종_판결", ""),
+        "value": simulation_result.get("최종_형량", ""),
+        "order": simulation_result.get("최종_판결", ""),
+        "rationale": simulation_result.get("판결_근거", ""),
         "conclusion": simulation_result.get("종합_분석_리포트", "")[:200],  # 200자 이내
     }
 
@@ -100,33 +92,33 @@ def _map_to_schema(simulation_result: dict, case_type: str) -> dict:
     }
 
 
-async def run_workflow(case_id: str) -> dict:
+async def run_workflow(case_id: str, case_type: str) -> dict:
     """
     simulation_orchestrator.py에서 호출하는 메인 함수
     1. case_id → JSON 파일에서 사건 정보 조회
-    2. ML 분류기로 사건 유형 판별
-    3. simulation_service.run_simulation() 호출 (sync → asyncio.to_thread로 실행)
-    4. 반환값을 simulation_schema 형식으로 변환
+    2. simulation_service.run_simulation() 호출 (sync → asyncio.to_thread로 실행)
+    3. 반환값을 simulation_schema 형식으로 변환
     """
     from app.ai.services.simulation_service import run_simulation
 
-    logger.info(f"시뮬레이션 시작 — case_id: {case_id}")
+    logger.info(f"시뮬레이션 시작 — case_id: {case_id}, case_type: {case_type}")
 
     # 1. JSON 파일에서 사건 정보 조회
     case_data = _load_case_json(case_id)
     description = case_data.get("description", "")
+    additional_info = case_data.get("additional_info", "")
 
     if not description:
         raise ValueError(f"사건 설명이 없습니다: {case_id}")
 
-    # 2. ML 분류기로 사건 유형 판별
-    case_type = _classify_case_type(description)
+    # description + additional_info 합쳐서 전달
+    case_text = f"{description}\n{additional_info}".strip() if additional_info else description
 
-    # 3. 시뮬레이션 실행 (sync 함수를 스레드풀에서 실행)
+    # 2. 시뮬레이션 실행 (sync 함수를 스레드풀에서 실행)
     logger.info(f"시뮬레이션 실행 — case_type: {case_type}")
-    simulation_result = await asyncio.to_thread(run_simulation, description, case_type)
+    simulation_result = await asyncio.to_thread(run_simulation, case_text, case_type)
 
-    # 4. simulation_schema 형식으로 변환
+    # 3. simulation_schema 형식으로 변환
     mapped_result = _map_to_schema(simulation_result, case_type)
     logger.info(f"시뮬레이션 완료 — case_id: {case_id}")
 

@@ -9,6 +9,7 @@ from pydantic import BaseModel
 # 시뮬레이션 시작 요청
 class SimulationStartRequest(BaseModel):
     case_id: str
+    case_type: str  # 프론트에서 확인/수정한 값
 
 
 # SSE 이벤트 데이터 스키마
