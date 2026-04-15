@@ -98,9 +98,11 @@ Responsible for:
 
 #### Agent Layer
 Responsible for:
-- prosecutor / plaintiff logic
-- defense / defendant logic
-- judge logic
+- prosecutor logic (형사 공격 측)
+- plaintiff logic (민사 공격 측)
+- criminal defense logic (형사 방어 측)
+- civil defense logic (민사 방어 측)
+- judge logic (원칙주의 / 형평주의 / 여론반영)
 - master judge logic
 
 Each agent should focus on **its legal role only** and should not manage orchestration.
@@ -129,9 +131,13 @@ app/
 │  └─ simulation_service.py
 ├─ agents/
 │  ├─ prosecutor.py
-│  ├─ lawyer.py
-│  ├─ judge.py
-│  └─ master_judge.py
+│  ├─ criminal_defense.py
+│  ├─ plaintiff.py
+│  ├─ civil_defense.py
+│  ├─ judge_principle.py
+│  ├─ judge_equity.py
+│  ├─ judge_public.py
+│  └─ judge_master.py
 └─ prompts/
    ├─ prosecutor.txt
    ├─ defense.txt

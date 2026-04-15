@@ -46,7 +46,7 @@ async def start_simulation(
     logger.info(f"시뮬레이션 요청: user_id={current_user.id}, case_id={request.case_id}")
 
     return StreamingResponse(
-        run_simulation(case_id=request.case_id),
+        run_simulation(case_id=request.case_id, case_type=request.case_type),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -58,5 +58,5 @@ async def start_simulation(
 curl -N -X POST http://localhost:8080/api/simulation/start \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer 복붙" \
-  -d '{"case_id": "case_0001"}'
+  -d '{"case_id": "case_0001", "case_type": "형사"}'
 """
