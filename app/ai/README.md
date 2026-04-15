@@ -22,8 +22,13 @@
 `.env`에 최소한 아래 값이 필요하다.
 
 ```env
+# [테스트용] Ollama 로컬 LLM 서버
+OLLAMA_MODEL=gemma3:4b
+
+# OpenAI — ChromaDB 임베딩 생성용
 OPENAI_API_KEY=your_openai_api_key
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+
 CHROMA_PATH=./chroma_db
 REDIS_URL=redis://localhost:6379
 ```
