@@ -110,16 +110,16 @@ def argue(state: TrialState, ctx: AgentContext, round_num: int) -> AgentMessage:
     Returns :
         AgentMessage
     """
-    from app.ai.services.llm_service import call_llm, build_agent_message
-    rag_context = "\n".join(doc.content for doc in ctx.retrieved_docs)
+    from app.ai.services.llm_service import generate_agent_message
+    from app.ai.services.retrieval_service import format_rag_context
+    rag_context = format_rag_context(ctx.retrieved_docs)
     prompt = build_prompt(
         case_summary=state.case_summary,
         role=ctx.assigned_role,
         rag_context=rag_context,
         action="변론",
     )
-    response = call_llm(SYSTEM_PROMPT, prompt)
-    return build_agent_message(ctx.assigned_role, "원고 변호사", round_num, "변론", response)
+    return generate_agent_message(SYSTEM_PROMPT, prompt, ctx.assigned_role, "원고 변호사", round_num, "변론")
 
 
 def rebut(state: TrialState, ctx: AgentContext, round_num: int) -> AgentMessage:
@@ -134,9 +134,10 @@ def rebut(state: TrialState, ctx: AgentContext, round_num: int) -> AgentMessage:
     Returns :
         AgentMessage
     """
-    from app.ai.services.llm_service import call_llm, build_agent_message
-    rag_context = "\n".join(doc.content for doc in ctx.retrieved_docs)
-    debate_history = "\n".join(msg.content or "" for msg in state.messages)
+    from app.ai.services.llm_service import format_debate_history, generate_agent_message
+    from app.ai.services.retrieval_service import format_rag_context
+    rag_context = format_rag_context(ctx.retrieved_docs)
+    debate_history = format_debate_history(state.messages)
     prompt = build_prompt(
         case_summary=state.case_summary,
         role=ctx.assigned_role,
@@ -144,5 +145,4 @@ def rebut(state: TrialState, ctx: AgentContext, round_num: int) -> AgentMessage:
         action="반박",
         debate_history=debate_history,
     )
-    response = call_llm(SYSTEM_PROMPT, prompt)
-    return build_agent_message(ctx.assigned_role, "원고 변호사", round_num, "반박", response)
+    return generate_agent_message(SYSTEM_PROMPT, prompt, ctx.assigned_role, "원고 변호사", round_num, "반박")

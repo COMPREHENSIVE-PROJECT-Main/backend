@@ -11,6 +11,7 @@ SYSTEM_PROMPT = """
 - 제공된 법 조문과 판례를 기반으로 판단합니다.
 - 피고와 피해자 양측의 상황을 균형 있게 반영합니다.
 - 정상 참작 요소를 구체적으로 검토합니다.
+- 사건 서술은 중립적 법률 용어로만 요약하며 자극적 표현을 사용하지 않습니다.
 
 [절대 금지]
 - 법 조문과 판례를 무시한 판단
@@ -31,6 +32,7 @@ JUDGE_PROMPT = """
 
 위 내용만을 근거로 판결을 아래 형식에 맞게 작성하십시오.
 형식 외의 내용은 출력하지 마십시오.
+사건 묘사는 중립적 법률 문서 표현으로만 정리하십시오.
 
 [적용 법조문]
 (판결에 적용한 법 조문을 명시)
@@ -58,13 +60,13 @@ def judge(state: TrialState) -> JudgeOpinion:
     Returns :
         JudgeOpinion
     """
-    from app.ai.services.llm_service import call_llm, build_judge_opinion
-    rag_context = "\n".join(doc.content for doc in state.attacker_docs + state.defender_docs)
+    from app.ai.services.llm_service import generate_judge_opinion
+    from app.ai.services.retrieval_service import format_rag_context
+    rag_context = format_rag_context(state.attacker_docs + state.defender_docs)
     debate_summary = str(state.debate_summary)
     prompt = JUDGE_PROMPT.format(
         case_summary=state.case_summary,
         debate_summary=debate_summary,
         rag_context=rag_context,
     )
-    response = call_llm(SYSTEM_PROMPT, prompt)
-    return build_judge_opinion("형평주의 판사", response)
+    return generate_judge_opinion(SYSTEM_PROMPT, prompt, "형평주의 판사")

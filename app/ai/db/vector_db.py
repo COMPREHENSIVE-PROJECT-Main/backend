@@ -28,16 +28,19 @@ def _get_client():
     return _client
 
 
-def get_collection(name: str = "precedents"): # 테스트 완료 후, Azure GPT-4o 버전으로 변경
+def _get_embedding_function():
+    return embedding_functions.OpenAIEmbeddingFunction(
+        api_key=settings.openai_api_key,
+        model_name=settings.openai_embedding_model,
+    )
+
+
+def get_collection(name: str = "precedents"):
     client = _get_client()
     try:
-        ollama_ef = embedding_functions.OllamaEmbeddingFunction(
-            url=f"{settings.ollama_base_url}/api/embeddings",
-            model_name=settings.ollama_embed_model,
-        )
         collection = client.get_or_create_collection(
             name=name,
-            embedding_function=ollama_ef,
+            embedding_function=_get_embedding_function(),
             metadata={
                 "hnsw:space": "cosine",
                 "hnsw:construction_ef": 200,
@@ -45,7 +48,11 @@ def get_collection(name: str = "precedents"): # 테스트 완료 후, Azure GPT-
                 "hnsw:M": 16,
             },
         )
-        logger.info(f"컬렉션 획득: {name} (embedding_model={settings.ollama_embed_model})")
+        logger.info(
+            f"컬렉션 획득: {name} "
+            f"(embedding_provider=openai, "
+            f"embedding_model={settings.embedding_model_name})"
+        )
         return collection
     except Exception as e:
         logger.error(f"컬렉션 생성/획득 실패: {e}")

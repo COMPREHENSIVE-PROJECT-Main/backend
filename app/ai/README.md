@@ -22,12 +22,16 @@
 `.env`에 최소한 아래 값이 필요하다.
 
 ```env
-# [테스트용] Ollama 로컬 LLM 서버
-OLLAMA_MODEL=gemma3:4b
-
-# OpenAI — ChromaDB 임베딩 생성용
+# OpenAI Embedding
 OPENAI_API_KEY=your_openai_api_key
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+
+# Azure OpenAI Chat
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
+AZURE_OPENAI_API_VERSION=2024-12-01-preview
+AZURE_OPENAI_API_KEY=your_azure_openai_api_key
+LLM_TIMEOUT_SECONDS=300
 
 CHROMA_PATH=./chroma_db
 REDIS_URL=redis://localhost:6379
@@ -97,7 +101,7 @@ python3 -m app.ai.main --index-case-law \
 
 ```text
 [INFO] [app.ai.db.vector_db] ChromaDB 로컬 연결 성공: ./chroma_db
-[INFO] [app.ai.db.vector_db] 컬렉션 획득: cases (embedding_model=text-embedding-3-small)
+[INFO] [app.ai.db.vector_db] 컬렉션 획득: cases (embedding_provider=openai, embedding_model=text-embedding-3-small)
 [INFO] [app.ai.services.indexing_service] 판례 데이터셋 인덱싱 시작: root=/Users/mooji/school/backend/app/dataset/case_law, collection=cases, files=8000, batch_size=100, chunk_size=800, overlap=150
 [INFO] [app.ai.services.indexing_service] 판례 JSON 인덱싱 시작: file=administration/1981~2016/(전주)2010누1281.json, progress=1/8000
 [INFO] [app.ai.services.indexing_service] 판례 JSON 인덱싱 완료: file=administration/1981~2016/(전주)2010누1281.json, indexed_chunks=23, successful_files=1, total_indexed_chunks=23
@@ -107,7 +111,7 @@ python3 -m app.ai.main --index-case-law \
 ### 법조문 인덱싱
 
 ```text
-[INFO] [app.ai.db.vector_db] 컬렉션 획득: statutes (embedding_model=text-embedding-3-small)
+[INFO] [app.ai.db.vector_db] 컬렉션 획득: statutes (embedding_provider=openai, embedding_model=text-embedding-3-small)
 [INFO] [app.ai.services.indexing_service] 법조문 데이터셋 인덱싱 시작: root=/Users/mooji/school/backend/app/dataset/statutes, collection=statutes, files=1709, batch_size=100, chunk_size=800, overlap=150
 [INFO] [app.ai.services.indexing_service] 법조문 JSON 인덱싱 시작: file=000001.json, progress=1/1709
 [INFO] [app.ai.services.indexing_service] 법조문 JSON 인덱싱 완료: file=000001.json, indexed_chunks=14, successful_files=1, total_indexed_chunks=14
@@ -116,7 +120,7 @@ python3 -m app.ai.main --index-case-law \
 ### 양형기준 인덱싱
 
 ```text
-[INFO] [app.ai.db.vector_db] 컬렉션 획득: sentencing (embedding_model=text-embedding-3-small)
+[INFO] [app.ai.db.vector_db] 컬렉션 획득: sentencing (embedding_provider=openai, embedding_model=text-embedding-3-small)
 [INFO] [app.ai.services.indexing_service] 양형기준 데이터셋 인덱싱 시작: root=/Users/mooji/school/backend/app/dataset/sentencing_guidelines, collection=sentencing, files=47, batch_size=100, chunk_size=800, overlap=150
 [INFO] [app.ai.services.indexing_service] 양형기준 JSON 인덱싱 시작: file=강도범죄.json, progress=1/47
 [INFO] [app.ai.services.indexing_service] 양형기준 JSON 인덱싱 완료: file=강도범죄.json, indexed_chunks=24, successful_files=1, total_indexed_chunks=24
@@ -152,6 +156,7 @@ python3 -m app.ai.main --index-case-law \
 ## 참고
 
 - Chroma는 로컬 persistent mode로 동작한다.
-- 임베딩 생성은 Chroma 컬렉션 생성 시 `OpenAIEmbeddingFunction`으로 처리한다.
+- 임베딩 생성은 OpenAI `text-embedding-3-small` 기준으로 동작한다.
+- 채팅 호출은 Azure OpenAI deployment name을 `model` 값으로 사용한다.
 - 개별 인덱싱 명령에서는 `--collection-name`을 명시하는 편이 안전하다.
 - 전체 병렬 인덱싱은 `--all`을 쓰는 것이 가장 단순하다.

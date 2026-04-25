@@ -15,6 +15,7 @@ SYSTEM_PROMPT = """
 - 어조는 단호하고 논리적이며, 공익적이어야 합니다. 
 - 제공한 사건 내용과 판례/법조문만 근거로 사용합니다.
 - 사건 내용에 없는 사실은 절대 추가하지 않습니다.
+- 사건 내용은 중립적 법률 용어로만 요약하며, 폭력 장면을 생생하게 묘사하지 않습니다.
 
 [절대 금지]
 - 피고인에 대한 동정이나 무죄 가능성 언급
@@ -23,6 +24,7 @@ SYSTEM_PROMPT = """
 - 증거 없는 주장
 - 피고 측에 유리한 진술
 - 판결 예측 또는 선고 
+- 자극적이거나 선정적인 사건 묘사
 """
 
 INITIAL_ARGUMENT_PROMPT = """
@@ -34,6 +36,7 @@ INITIAL_ARGUMENT_PROMPT = """
 
 위 내용만을 근거로 초기 변론을 아래 형식에 맞게 작성하십시오.
 형식 외의 내용은 출력하지 마십시오.
+모든 사건 서술은 법률 문서 스타일의 중립적 표현으로만 작성하십시오.
 
 [핵심 주장]
 (피고인의 행위와 죄목을 명확히 서술)
@@ -57,6 +60,7 @@ REBUTTAL_PROMPT = """
 
 현재 라운드까지 피고 변호사의 발언에 대해 반박 대상으로 삼아 형식에 맞게 작성하십시오.
 형식 외의 내용은 출력하지 마십시오.
+모든 사건 서술은 법률 문서 스타일의 중립적 표현으로만 작성하십시오.
 
 [반박 대상]
 (현재 라운드까지 피고 변호사의 주장 중 반박할 핵심 내용을 항목별로 나열)
@@ -113,16 +117,16 @@ def argue(state: TrialState, ctx: AgentContext, round_num: int) -> AgentMessage:
     Returns :
         AgentMessage
     """
-    from app.ai.services.llm_service import call_llm, build_agent_message
-    rag_context = "\n".join(doc.content for doc in ctx.retrieved_docs)
+    from app.ai.services.llm_service import generate_agent_message
+    from app.ai.services.retrieval_service import format_rag_context
+    rag_context = format_rag_context(ctx.retrieved_docs)
     prompt = build_prompt(
         case_summary=state.case_summary,
         role=ctx.assigned_role,
         rag_context=rag_context,
         action="변론",
     )
-    response = call_llm(SYSTEM_PROMPT, prompt)
-    return build_agent_message(ctx.assigned_role, "검사", round_num, "변론", response)
+    return generate_agent_message(SYSTEM_PROMPT, prompt, ctx.assigned_role, "검사", round_num, "변론")
 
 
 def rebut(state: TrialState, ctx: AgentContext, round_num: int) -> AgentMessage:
@@ -137,9 +141,10 @@ def rebut(state: TrialState, ctx: AgentContext, round_num: int) -> AgentMessage:
     Returns :
         AgentMessage
     """
-    from app.ai.services.llm_service import call_llm, build_agent_message
-    rag_context = "\n".join(doc.content for doc in ctx.retrieved_docs)
-    debate_history = "\n".join(msg.content or "" for msg in state.messages)
+    from app.ai.services.llm_service import format_debate_history, generate_agent_message
+    from app.ai.services.retrieval_service import format_rag_context
+    rag_context = format_rag_context(ctx.retrieved_docs)
+    debate_history = format_debate_history(state.messages)
     prompt = build_prompt(
         case_summary=state.case_summary,
         role=ctx.assigned_role,
@@ -147,5 +152,4 @@ def rebut(state: TrialState, ctx: AgentContext, round_num: int) -> AgentMessage:
         action="반박",
         debate_history=debate_history,
     )
-    response = call_llm(SYSTEM_PROMPT, prompt)
-    return build_agent_message(ctx.assigned_role, "검사", round_num, "반박", response)
+    return generate_agent_message(SYSTEM_PROMPT, prompt, ctx.assigned_role, "검사", round_num, "반박")

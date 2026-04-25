@@ -11,6 +11,7 @@ SYSTEM_PROMPT = """
 - 세 판사의 판결을 균형 있게 검토합니다.
 - 공통점과 차이점을 분석하여 최종 판결을 도출합니다.
 - 일반인이 이해할 수 있도록 판결 이유를 서술합니다.
+- 사건 서술은 중립적 법률 용어로만 요약하며 자극적 표현을 사용하지 않습니다.
 
 [절대 금지]
 - 세 판사의 판결 내용을 무시한 독자적 판단
@@ -36,6 +37,7 @@ JUDGE_PROMPT = """
 
 위 세 판사의 판결을 종합하여 아래 형식에 맞게 작성하십시오.
 형식 외의 내용은 출력하지 마십시오.
+사건 묘사는 중립적 법률 문서 표현으로만 정리하십시오.
 
 [판결 비교 분석]
 (세 판결의 공통점과 차이점을 항목별로 분석)
@@ -63,7 +65,7 @@ def judge(state: TrialState) -> tuple[str, str, str, str]:
     Returns :
         (verdict, reasoning, report) tuple
     """
-    from app.ai.services.llm_service import call_llm, _parse_section
+    from app.ai.services.llm_service import generate_master_judgment
     debate_summary = str(state.debate_summary)
     judge_opinions = {o.judge_name: f"판결: {o.decision}\n형량: {o.sentence or '없음'}\n근거: {o.reasoning}" for o in state.judge_opinions}
     prompt = JUDGE_PROMPT.format(
@@ -73,9 +75,4 @@ def judge(state: TrialState) -> tuple[str, str, str, str]:
         judge_equity_result=judge_opinions.get("형평주의 판사", ""),
         judge_public_result=judge_opinions.get("여론반영 판사", ""),
     )
-    response = call_llm(SYSTEM_PROMPT, prompt)
-    verdict   = _parse_section(response, "최종 판결 결과") or response[:100]
-    reasoning = _parse_section(response, "종합 판단 이유") or response
-    sentence  = _parse_section(response, "최종 형량 또는 배상액") or ""
-    report    = _parse_section(response, "종합 분석 보고서") or response
-    return verdict, reasoning, report, sentence
+    return generate_master_judgment(SYSTEM_PROMPT, prompt)

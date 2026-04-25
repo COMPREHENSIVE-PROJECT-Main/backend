@@ -53,6 +53,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional path to write the resulting TrialState JSON.",
     )
     parser.add_argument(
+        "--simulate",
+        action="store_true",
+        help="Run the full AI trial simulation instead of only emitting a TrialState JSON.",
+    )
+    parser.add_argument(
         "--init-runtime",
         action="store_true",
         help="Initialize Redis, vector collections, and model runtime before continuing.",
@@ -115,6 +120,14 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _simulation_case_type(case_type: str) -> str:
+    if case_type in ("criminal", "형사"):
+        return "형사"
+    if case_type in ("civil", "민사"):
+        return "민사"
+    raise SystemExit("--case-type must be criminal or civil when --simulate is used")
+
+
 def load_state(args: argparse.Namespace) -> "TrialState":
     from app.ai.models import TrialState
 
@@ -140,6 +153,29 @@ def emit_state(state: "TrialState", output_path: Optional[Path]) -> None:
         output_path.write_text(rendered + "\n", encoding="utf-8")
         return
     print(rendered)
+
+
+def emit_json(payload: dict, output_path: Optional[Path]) -> None:
+    rendered = json.dumps(payload, ensure_ascii=False, indent=2)
+    if output_path:
+        output_path.write_text(rendered + "\n", encoding="utf-8")
+        return
+    print(rendered)
+
+
+def run_trial_simulation(args: argparse.Namespace) -> None:
+    state = load_state(args)
+    if not state.case_summary:
+        raise SystemExit("--case-summary or --input with case_summary is required when --simulate is used")
+
+    from app.ai.services.simulation_service import run_simulation
+
+    result = run_simulation(
+        case_text=state.case_summary,
+        case_type=_simulation_case_type(str(state.case_type.value if hasattr(state.case_type, "value") else state.case_type)),
+        round_limit=state.round_limit,
+    )
+    emit_json(result, args.output)
 
 
 async def run_case_law_indexing(args: argparse.Namespace) -> None:
@@ -286,6 +322,9 @@ def main() -> None:
         return
     if args.index_sentencing:
         asyncio.run(run_sentencing_indexing(args))
+        return
+    if args.simulate:
+        run_trial_simulation(args)
         return
     state = load_state(args)
     emit_state(state, args.output)

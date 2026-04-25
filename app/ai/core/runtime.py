@@ -4,6 +4,7 @@ import importlib
 from dataclasses import dataclass
 from typing import Sequence
 
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.com.logger import get_logger
@@ -16,12 +17,39 @@ DEFAULT_COLLECTIONS: tuple[str, ...] = ("cases", "statutes", "sentencing")
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 
-    llm_mode: str = "test"
-    ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "gemma3:4b"
-    ollama_embed_model: str = "nomic-embed-text"  # Pydantic Settings 필드 선언
-    openai_api_key: str = ""
-    openai_embedding_model: str = "text-embedding-3-small"
+    llm_mode: str = "azure"
+    llm_timeout_seconds: int = Field(
+        default=300,
+        validation_alias=AliasChoices("LLM_TIMEOUT_SECONDS", "llm_timeout_seconds"),
+    )
+    openai_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("OPENAI_API_KEY", "openai_api_key"),
+    )
+    openai_embedding_model: str = Field(
+        default="text-embedding-3-small",
+        validation_alias=AliasChoices("OPENAI_EMBEDDING_MODEL", "openai_embedding_model"),
+    )
+    azure_openai_endpoint: str = Field(
+        default="",
+        validation_alias=AliasChoices("AZURE_OPENAI_ENDPOINT", "azure_openai_endpoint"),
+    )
+    azure_openai_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("AZURE_OPENAI_API_KEY", "azure_openai_api_key"),
+    )
+    azure_openai_api_version: str = Field(
+        default="2024-12-01-preview",
+        validation_alias=AliasChoices("AZURE_OPENAI_API_VERSION", "azure_openai_api_version"),
+    )
+    azure_openai_deployment_name: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "AZURE_OPENAI_DEPLOYMENT_NAME",
+            "AZURE_OPENAI_CHAT_DEPLOYMENT",
+            "azure_openai_deployment_name",
+        ),
+    )
     chroma_path: str = "./chroma_db"
     redis_url: str = "redis://localhost:6379"
     embedding_dim: int = 768
@@ -30,6 +58,33 @@ class Settings(BaseSettings):
     db_user: str = "postgres"
     db_password: str = "postgres"
     db_name: str = "lawdb"
+
+    @field_validator(
+        "openai_api_key",
+        "openai_embedding_model",
+        "azure_openai_endpoint",
+        "azure_openai_api_key",
+        "azure_openai_api_version",
+        "azure_openai_deployment_name",
+        mode="before",
+    )
+    @classmethod
+    def _strip_string_values(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip()
+        return value
+
+    @property
+    def embedding_model_name(self) -> str:
+        return self.openai_embedding_model
+
+    @property
+    def chat_model_name(self) -> str:
+        return self.azure_openai_deployment_name
+
+    @property
+    def normalized_azure_openai_endpoint(self) -> str:
+        return self.azure_openai_endpoint.rstrip("/")
 
 
 settings = Settings()
@@ -46,19 +101,27 @@ def _validate_settings() -> None:
     if settings.embedding_dim <= 0:
         raise ValueError("embedding_dim must be greater than 0")
 
-    if not settings.ollama_model:
-        raise ValueError("ollama_model must be configured")
+    if settings.llm_timeout_seconds <= 0:
+        raise ValueError("llm_timeout_seconds must be greater than 0")
 
-    # 테스트를 위해 주석 처리 
-    # if not settings.openai_api_key:
-    #     raise ValueError("openai_api_key must be configured")
-
-    # if not settings.openai_embedding_model:
-    #     raise ValueError("openai_embedding_model must be configured")
+    if not settings.openai_api_key:
+        raise ValueError("openai_api_key must be configured")
+    if not settings.openai_embedding_model:
+        raise ValueError("openai_embedding_model must be configured")
+    if not settings.azure_openai_endpoint:
+        raise ValueError("azure_openai_endpoint must be configured")
+    if not settings.azure_openai_api_key:
+        raise ValueError("azure_openai_api_key must be configured")
+    if not settings.azure_openai_api_version:
+        raise ValueError("azure_openai_api_version must be configured")
+    if not settings.azure_openai_deployment_name:
+        raise ValueError("azure_openai_deployment_name must be configured")
 
 def _warm_embedding_runtime() -> None:
     importlib.import_module("chromadb.utils.embedding_functions")
-    logger.info(f"Embedding runtime ready (model={settings.openai_embedding_model})")
+    logger.info(
+        f"Embedding runtime ready (provider=openai, model={settings.embedding_model_name})"
+    )
 
 
 def _warm_vector_db(collection_names: Sequence[str]) -> list[str]:
@@ -93,7 +156,7 @@ async def initialize_runtime(
     redis_ready = await _warm_redis()
 
     return RuntimeStatus(
-        embedding_model=settings.openai_embedding_model,
+        embedding_model=settings.embedding_model_name,
         redis_ready=redis_ready,
         vector_collections=ready_collections,
     )
