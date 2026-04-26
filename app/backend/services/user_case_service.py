@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.backend.models.user_case import UserCase
 from app.backend.schemas.analysis_schema import AnalysisResult
 from app.backend.schemas.user_case_schema import CaseData, CaseInputPlusResponse, CaseResponse
-from app.backend.services.mock_llm_service import analyze_case, ask_followup_questions
+from app.backend.services.llm_service import analyze_case, ask_followup_questions
 
 
 # 사건 입력 파일 저장 경로
@@ -34,7 +34,13 @@ def _generate_case_id() -> str:
     return f"case_{next_num:04d}"
 
 
-async def save_case(description: str, user_id: int, db: Session) -> CaseResponse:
+async def save_case(
+    description: str,
+    user_id: int,
+    db: Session,
+    file_summary: str = "",
+    file_questions: list[str] | None = None,
+) -> CaseResponse:
     """
     사건 설명을 JSON 파일로 저장하고 DB에 유저-사건 연결 정보 기록
 
@@ -42,31 +48,36 @@ async def save_case(description: str, user_id: int, db: Session) -> CaseResponse
         description: 검증된 사건 설명 텍스트
         user_id: 사건을 입력한 유저 ID
         db: DB 세션
+        file_summary: 첨부파일에서 추출한 핵심 요약 (없으면 빈 문자열)
+        file_questions: 분석 불가 파일에 대한 추가 질문 목록
 
     Returns:
         CaseResponse 객체
     """
-
     case_id = _generate_case_id()
 
     case_data = CaseData(
         case_id=case_id,
         description=description,
         created_at=date.today()
-    )
+    ).model_dump(mode="json")
+
+    if file_summary:
+        case_data["file_summary"] = file_summary
 
     # JSON 파일로 저장
     file_path = INPUT_CASES_DIR / f"{case_id}.json"
     with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(case_data.model_dump(mode="json"), f, ensure_ascii=False, indent=2)
+        json.dump(case_data, f, ensure_ascii=False, indent=2)
 
     # DB에 유저-사건 연결 정보 저장
     user_case = UserCase(case_id=case_id, user_id=user_id)
     db.add(user_case)
     db.commit()
 
-    # 추가 질문 생성 (mock — 추후 LLM 연동)
-    questions = await ask_followup_questions(description)
+    # 추가 질문 생성 (LLM) + 분석 불가 파일 질문 병합
+    llm_questions = await ask_followup_questions(description)
+    questions = llm_questions + (file_questions or [])
 
     return CaseResponse(case_id=case_id, user_id=user_id, questions=questions)
 

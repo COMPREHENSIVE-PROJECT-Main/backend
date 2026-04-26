@@ -71,6 +71,7 @@ async def start_simulation(
     return StreamingResponse(
         run_simulation(
             case_id=request.case_id,
+            case_type=request.case_type,
             user_id=current_user.id,
             db=db,
             start_from_round=request.start_from_round,
@@ -132,5 +133,5 @@ async def get_simulation_result(
 curl -N -X POST http://localhost:8080/api/simulation/start \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer 복붙" \
-  -d '{"case_id": "case_0001"}'
+  -d '{"case_id": "case_0001", "case_type": "형사"}'
 """

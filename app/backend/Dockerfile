@@ -16,6 +16,10 @@ COPY app/__init__.py ./app/__init__.py
 COPY app/backend ./app/backend
 COPY app/com ./app/com
 COPY app/config.py ./app/config.py
+COPY app/ai_bridge.py ./app/ai_bridge.py
+COPY app/ai ./app/ai   
+# 아래는 테스트용 
+COPY data ./data 
 
 RUN chown -R appuser:appuser /app
 

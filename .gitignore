@@ -10,6 +10,11 @@ __pycache__/
 .venv/
 venv/
 
+# AI 데이터/산출물
+app/dataset/
+chroma_db/
+results.json
+
 # git
 .DS_Store
 **/.DS_Store

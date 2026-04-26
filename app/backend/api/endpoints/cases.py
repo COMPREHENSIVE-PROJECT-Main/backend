@@ -1,11 +1,14 @@
 # 사건 입력 관련 엔드포인트
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Optional
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.backend.utils.dependencies import get_current_user, get_db
 from app.backend.models.user import User
-from app.backend.schemas.user_case_schema import CaseInput, CaseInputPlus, CaseInputPlusResponse, CaseResponse
+from app.backend.schemas.user_case_schema import CaseInputPlus, CaseInputPlusResponse, CaseResponse
 from app.backend.services.user_case_service import save_case, save_case_plus
+from app.backend.services.file_processor import process_attachments
 from app.backend.utils.case_input_validator import validate_case_input
 from app.com.logger import get_logger
 
@@ -16,27 +19,30 @@ router = APIRouter(prefix="/cases", tags=["cases"])
 
 @router.post("/input", response_model=CaseResponse)
 async def input_case(
-    case_input: CaseInput,
+    case_description: str = Form(..., description="사건 설명 (최소 20자)"),
+    files: list[UploadFile] = File(default=[], description="첨부파일 (PDF, Word, 이미지, 동영상 등 — 선택)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
-    사건 설명 입력 수신
+    사건 설명 입력 수신 (multipart/form-data)
 
-    - JWT 유저 확인
-    - 입력값 검증 (최소 20자, 공백 확인)
-    - JSON 파일 저장 + DB 저장
+    - case_description: 사건 설명 텍스트 (필수)
+    - files: 첨부파일 목록 (선택) — PDF/Word/이미지 → 자동 요약, 동영상 → 추가 질문 생성
+    - JWT 유저 확인 + 입력값 검증 (최소 20자)
     - 응답에 추가 정보 요청 질문 목록 포함 (questions)
     """
+    validated_description = validate_case_input(case_description)
 
-    # 입력값 검증 및 공백 제거
-    validated_description = validate_case_input(case_input.case_description)
+    # 첨부파일 처리 (없으면 빈값)
+    file_summary, file_questions = await process_attachments(files)
 
-    # 사건 저장 및 추가 질문 생성
     return await save_case(
         description=validated_description,
         user_id=current_user.id,
-        db=db
+        db=db,
+        file_summary=file_summary,
+        file_questions=file_questions,
     )
 
 

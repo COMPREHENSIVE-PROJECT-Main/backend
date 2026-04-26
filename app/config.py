@@ -17,11 +17,6 @@ class Settings(BaseSettings):
     chroma_host: str = "chromadb"
     chroma_port: int = 8000
 
-    # 올라마 연결 정보 (로컬 AI 모델 실행용)
-    ollama_base_url: str = "http://ollama:11434"
-    ollama_llm_model: str = "gemma3:4b"
-    ollama_embed_model: str = "nomic-embed-text"
-
     # JWT 설정
     jwt_secret_key: str
     jwt_algorithm: str = "HS256"

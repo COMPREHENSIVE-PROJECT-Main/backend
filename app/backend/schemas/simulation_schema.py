@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 # 시뮬레이션 시작 요청
 class SimulationStartRequest(BaseModel):
     case_id: str
+    case_type: str  # "형사" | "민사" — 프론트에서 확인/수정한 값
     start_from_round: int = Field(default=1, ge=1, description="재개할 라운드 번호 (기본 1 = 처음부터)")
 
 

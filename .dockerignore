@@ -13,3 +13,8 @@ __pycache__/
 # 가상환경 폴더
 .venv/
 venv/
+
+# AI 데이터/산출물은 런타임 볼륨이나 로컬 CLI에서 사용
+app/dataset/
+chroma_db/
+results.json
