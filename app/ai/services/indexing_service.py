@@ -19,6 +19,7 @@ _DATASET_ROOT = Path(__file__).resolve().parents[2] / "dataset"
 _CASE_LAW_DATASET_ROOT = _DATASET_ROOT / "case_law"
 _STATUTES_DATASET_ROOT = _DATASET_ROOT / "statutes"
 _SENTENCING_DATASET_ROOT = _DATASET_ROOT / "sentencing_guidelines"
+_OPINIONS_DATASET_ROOT = Path(__file__).resolve().parents[3] / "data" / "articles_sentiment"
 
 
 def _format_progress(file_index: int, discovered_files: int) -> str:
@@ -631,3 +632,73 @@ async def index_sentencing_dataset(
         loader=_iter_sentencing_files,
         record_preparer=_prepare_sentencing_records,
     )
+
+
+def index_opinions_dataset(
+    collection_name: str = "opinion",
+    batch_size: int = 100,
+    skip_if_collection_exists: bool = True,
+) -> int:
+    from app.ai.db.vector_db import get_opinion_collection
+
+    collection = get_opinion_collection(collection_name)
+
+    if skip_if_collection_exists and collection.count() > 0:
+        logger.info(
+            "Opinion 컬렉션에 데이터가 이미 존재해 인덱싱 건너뜀: "
+            f"collection={collection_name}, count={collection.count()}"
+        )
+        return 0
+
+    opinion_files = sorted(_OPINIONS_DATASET_ROOT.rglob("*.json"))
+    if not opinion_files:
+        logger.warning(f"인덱싱할 여론 JSON 파일이 없음: root={_OPINIONS_DATASET_ROOT}")
+        return 0
+
+    logger.info(
+        f"여론 데이터 인덱싱 시작: root={_OPINIONS_DATASET_ROOT}, files={len(opinion_files)}"
+    )
+
+    records: list[dict[str, Any]] = []
+    for path in opinion_files:
+        try:
+            with path.open("r", encoding="utf-8") as fp:
+                data = json.load(fp)
+        except Exception as exc:
+            logger.warning(f"여론 JSON 로드 실패: file={path}, error={exc}")
+            continue
+
+        content = data.get("content", "").strip()
+        if not content:
+            continue
+
+        doc_id = f"{path.parent.name}/{path.stem}"
+        records.append({
+            "id": doc_id,
+            "document": content,
+            "metadata": _clean_metadata({
+                "case_type": data.get("case_type", ""),
+                "sentiment_score": float(data.get("sentiment_score", 0.0)),
+                "date": data.get("date", ""),
+                "keyword": data.get("keyword", ""),
+                "title": data.get("title", ""),
+            }),
+        })
+
+    if not records:
+        logger.warning("인덱싱할 여론 레코드가 없음")
+        return 0
+
+    total_indexed = 0
+    for start in range(0, len(records), batch_size):
+        batch = records[start : start + batch_size]
+        collection.upsert(
+            ids=[r["id"] for r in batch],
+            documents=[r["document"] for r in batch],
+            metadatas=[r["metadata"] for r in batch],
+        )
+        total_indexed += len(batch)
+        logger.info(f"여론 배치 upsert: {start + 1}~{start + len(batch)} / {len(records)}")
+
+    logger.info(f"여론 데이터 인덱싱 완료: collection={collection_name}, total={total_indexed}")
+    return total_indexed

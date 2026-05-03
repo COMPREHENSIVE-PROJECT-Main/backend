@@ -35,6 +35,12 @@ def _get_embedding_function():
     )
 
 
+def _get_hf_embedding_function():
+    return embedding_functions.SentenceTransformerEmbeddingFunction(
+        model_name="jhgan/ko-sroberta-multitask",
+    )
+
+
 def get_collection(name: str = "precedents"):
     client = _get_client()
     try:
@@ -56,4 +62,24 @@ def get_collection(name: str = "precedents"):
         return collection
     except Exception as e:
         logger.error(f"컬렉션 생성/획득 실패: {e}")
+        raise
+
+
+def get_opinion_collection(name: str = "opinion"):
+    client = _get_client()
+    try:
+        collection = client.get_or_create_collection(
+            name=name,
+            embedding_function=_get_hf_embedding_function(),
+            metadata={
+                "hnsw:space": "cosine",
+                "hnsw:construction_ef": 200,
+                "hnsw:search_ef": 100,
+                "hnsw:M": 16,
+            },
+        )
+        logger.info(f"Opinion 컬렉션 획득: {name} (embedding=jhgan/ko-sroberta-multitask)")
+        return collection
+    except Exception as e:
+        logger.error(f"Opinion 컬렉션 생성/획득 실패: {e}")
         raise

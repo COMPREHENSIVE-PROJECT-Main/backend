@@ -41,13 +41,16 @@ def _log_message_result(message) -> None:
 
 def init_state(case_text: str, case_type: str, round_limit: int = 3) -> TrialState :
     # 0 단계 : 공유 상태 초기화
+    from app.ai.services.retrieval_service import search_opinions
+    opinion_data = search_opinions(case_text)
+
     state = TrialState(
-        case_id = str(uuid.uuid4()), 
+        case_id = str(uuid.uuid4()),
         case_type = CaseType.CRIMINAL if case_type == "형사" else CaseType.CIVIL,
         case_summary=case_text,
         round_limit=round_limit,
         metadata={
-            "opinion_data": "제공된 별도 여론 데이터가 없습니다. 여론을 임의로 추정하지 말고 법리와 기록 중심으로 판단하십시오."
+            "opinion_data": opinion_data,
         },
     )
     logger.info(
