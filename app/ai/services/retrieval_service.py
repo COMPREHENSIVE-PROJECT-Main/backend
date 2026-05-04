@@ -114,5 +114,54 @@ def search_chromadb(
         len(results),
         _preview_titles(results),
     )
-    
+
     return results
+
+
+_OPINION_FALLBACK = (
+    "제공된 별도 여론 데이터가 없습니다. "
+    "여론을 임의로 추정하지 말고 법리와 기록 중심으로 판단하십시오."
+)
+
+
+def search_opinions(case_summary: str, top_k: int = 10) -> str:
+    """
+    사건 내용과 유사한 여론 기사를 opinion 컬렉션에서 검색하고
+    sentiment_score를 집계하여 judge_public 프롬프트용 문자열로 반환.
+    """
+    from app.ai.db.vector_db import get_opinion_collection
+
+    try:
+        collection = get_opinion_collection()
+        results = collection.query(
+            query_texts=[case_summary],
+            n_results=top_k,
+            include=["metadatas"],
+        )
+
+        metadatas = results.get("metadatas", [[]])[0]
+        if not metadatas:
+            logger.warning("Opinion 검색 결과 없음")
+            return _OPINION_FALLBACK
+
+        scores = [float(m.get("sentiment_score", 0.0)) for m in metadatas]
+        total = len(scores)
+        avg_score = sum(scores) / total
+        pos_count = sum(1 for s in scores if s > 0)
+        neg_count = total - pos_count
+
+        logger.info(
+            "Opinion 검색 완료: total=%s, avg_score=%.4f, pos=%s, neg=%s",
+            total, avg_score, pos_count, neg_count,
+        )
+
+        return (
+            f"- 분석 기사: {total}건\n"
+            f"- 평균 감성 점수: {avg_score:.2f}\n"
+            f"- 부정 여론: {neg_count}건 ({neg_count * 100 // total}%)\n"
+            f"- 긍정 여론: {pos_count}건 ({pos_count * 100 // total}%)"
+        )
+
+    except Exception as e:
+        logger.warning("Opinion 검색 실패, 폴백 사용: %s", e)
+        return _OPINION_FALLBACK
